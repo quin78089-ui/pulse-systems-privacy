@@ -115,7 +115,35 @@
       try{const result=await get(`/api/guilds/${gid}/permissions/members`);members=result.members||[];renderMembers();}catch(e){members=[];$p("permHint").textContent="Member lookup unavailable. You can still enter a Discord user ID manually."; }
       const roleNames=new Map(permissionData.roles.map(r=>[r.id,r.name]));
       const memberNames=new Map(members.map(m=>[m.id,m.display_name||m.name]));
-      $p("permRows").innerHTML = table(["Type","Target","Permission","Decision"],permissionData.overrides.map(x=>[x.type,(x.type==="role"?roleNames:memberNames).get(x.id)||x.id,x.permission,x.allowed?"Allow":"Deny"]));
+      const overrides=permissionData.overrides;
+      $p("permRows").innerHTML = overrides.length
+        ? `<table class="dash-table"><thead><tr><th>Type</th><th>Target</th><th>Permission</th><th>Decision</th><th>Actions</th></tr></thead><tbody>${overrides.map((x,i)=>`<tr><td>${safe(x.type)}</td><td>${safe((x.type==="role"?roleNames:memberNames).get(x.id)||x.id)}</td><td>${safe(x.permission)}</td><td>${x.allowed?"Allow":"Deny"}</td><td><button class="button secondary dash-button" data-perm-edit="${i}" type="button">Edit</button> <button class="button secondary dash-button" data-perm-delete="${i}" type="button">Delete</button></td></tr>`).join("")}</tbody></table>`
+        : '<p class="dash-empty">No records found.</p>';
+      $p("permRows").querySelectorAll("[data-perm-edit]").forEach(btn=>btn.addEventListener("click",()=>{
+        const x=overrides[Number(btn.dataset.permEdit)];
+        $p("permKind").value=x.type;
+        $p("permKind").dispatchEvent(new Event("change"));
+        if(x.type==="role")$p("permRole").value=x.id;
+        else{$p("permMember").value=x.id;$p("permMemberSearch").value="";renderMembers();$p("permMemberPick").value=x.id;}
+        $p("permCategory").value="all";
+        $p("permCommandSearch").value="";
+        renderCommands();
+        $p("permCommand").value=x.permission;
+        $p("permValue").value=x.allowed?"1":"0";
+        $p("permFeedback").textContent="Editing existing override. Change the setting, then click Save permission.";
+        $p("permSave").focus();
+      }));
+      $p("permRows").querySelectorAll("[data-perm-delete]").forEach(btn=>btn.addEventListener("click",async()=>{
+        const x=overrides[Number(btn.dataset.permDelete)];
+        if(!confirm(`Delete the ${x.allowed?"Allow":"Deny"} override for ${x.type} ${x.id} on ${x.permission}? The permission will revert to Inherit.`))return;
+        btn.disabled=true;
+        try{
+          const response=await fetch(api+`/api/guilds/${encodeURIComponent(guildSelect.value)}/permissions`,{method:"PUT",credentials:"include",headers:{"Content-Type":"application/json","X-Pulse-CSRF":csrf},body:JSON.stringify({type:x.type,id:x.id,permission:x.permission,allowed:null})});
+          if(!response.ok)throw new Error((await response.text()).slice(0,240));
+          await loadPermissions();
+          $p("permFeedback").textContent="Override deleted. The permission now inherits its normal rules.";
+        }catch(e){$p("permFeedback").textContent=e.message;btn.disabled=false;}
+      }));
       const audit=await get(`/api/guilds/${gid}/permissions/audit`);
       $p("permAudit").innerHTML=table(["When","Target","Permission","Change"],audit.events.map(x=>[new Date(x.at*1000).toLocaleString(),`${x.type}: ${x.id}`,x.permission,`${x.old===null?"Inherit":x.old?"Allow":"Deny"} → ${x.new===null?"Inherit":x.new?"Allow":"Deny"}`]));
     }catch(e){ if(!String(e.message).includes("Only the Discord server owner")) console.warn("Permission panel:",e.message); }
