@@ -11,7 +11,7 @@
 <body>
   <header class="topbar"><a class="brand" href="index.html"><img src="assets/pulse-mark.svg" alt="" class="brand-mark"><span>PULSE <b>SYSTEMS</b></span></a><nav><a href="index.html">Home</a><a href="index.html#support">Support</a></nav></header>
   <main class="dash-wrap">
-    <div class="dash-head"><div><div class="eyebrow">PULSE SYSTEMS / MANAGEMENT</div><h1>Server <span>dashboard.</span></h1><p class="dash-muted">Read-only view of your bot's current data.</p></div><div><button class="button secondary dash-button" id="loginBtn">Login with Discord</button> <button class="button secondary dash-button" id="logoutBtn" hidden>Sign out</button></div></div>
+    <div class="dash-head"><div><div class="eyebrow">PULSE SYSTEMS / MANAGEMENT</div><h1>Server <span>dashboard.</span></h1><p class="dash-muted">Manage Roblox mappings and view your bot's current data.</p></div><div><button class="button secondary dash-button" id="loginBtn">Login with Discord</button> <button class="button secondary dash-button" id="logoutBtn" hidden>Sign out</button></div></div>
     <div class="dash-panel"><label for="guildSelect">Choose a server</label><br><select class="dash-select" id="guildSelect" disabled><option>Sign in to load servers</option></select><div class="dash-status" id="status" role="status">Set your API address in dashboard-config.js before signing in.</div></div>
     <div class="dash-grid">
       <section class="dash-panel"><h2>Moderation logs</h2><p class="dash-muted">Latest cases recorded by the bot.</p><div class="dash-scroll" id="logs"><p class="dash-empty">No data loaded.</p></div></section>
@@ -19,7 +19,7 @@
       <section class="dash-panel"><h2>Roblox mappings</h2><p class="dash-muted">Existing group/rank to Discord role mappings.</p><div id="roblox"><p class="dash-empty">No data loaded.</p></div></section>
       <section class="dash-panel"><h2>Announcements & SSU</h2><p class="dash-muted">Current opt-in panel and recent SSU sessions.</p><div id="announcements"><p class="dash-empty">No data loaded.</p></div></section>
     </div>
-    <p class="dash-muted" style="margin-top:22px">This initial dashboard is read-only. Role changes, configuration changes and sending announcements are not enabled yet.</p>
+    <p class="dash-muted" style="margin-top:22px">Roblox mappings can be edited here. Other dashboard sections remain read-only.</p>
   </main>
-  <script src="dashboard-config.js?v=20261010-3"></script><script src="dashboard.js?v=20261010-3"></script>
+  <script src="dashboard-config.js?v=20261010-3"></script><script src="dashboard.js?v=20261010-4"></script>
 </body></html>
