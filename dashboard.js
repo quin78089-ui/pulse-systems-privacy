@@ -55,6 +55,58 @@
     catch(err){mappingFeedback.textContent=err.message;}
   });
 
+
+  // Owner-only permission administration. The backend independently validates every write.
+  const permSection = document.createElement("section");
+  permSection.className = "dash-panel";
+  permSection.id = "pulsePermissionPanel";
+  permSection.hidden = true;
+  permSection.innerHTML = `<h2>Server permissions</h2><p class="dash-muted">Server owner only. Member overrides take priority over role overrides. Deny wins between roles. Inherit removes an override. Discord's built-in command restrictions still apply.</p>
+  <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:end">
+  <label>Assign to <select class="dash-select" id="permKind"><option value="role">Role</option><option value="member">Member</option></select></label>
+  <label id="permRoleWrap">Role <select class="dash-select" id="permRole"></select></label>
+  <label id="permMemberWrap" hidden>Member ID <input class="dash-select" id="permMember" placeholder="Discord user ID" inputmode="numeric"></label>
+  <label>Command or access <select class="dash-select" id="permCommand"></select></label>
+  <label>Setting <select class="dash-select" id="permValue"><option value="1">Allow</option><option value="0">Deny</option><option value="inherit">Inherit / clear</option></select></label>
+  <button class="button secondary dash-button" id="permSave" type="button">Save permission</button></div>
+  <p class="dash-muted" id="permFeedback" role="status"></p><h3>Current overrides</h3><div class="dash-scroll" id="permRows"></div><h3>Recent changes</h3><div class="dash-scroll" id="permAudit"></div>`;
+  document.querySelector(".dash-grid").after(permSection);
+  const $p = id => document.getElementById(id);
+  $p("permKind").addEventListener("change",()=>{$p("permRoleWrap").hidden=$p("permKind").value!=="role";$p("permMemberWrap").hidden=$p("permKind").value!=="member";});
+  let permissionData = null;
+  async function loadPermissions(){
+    permSection.hidden = true;
+    permissionData = null;
+    if(!guildSelect.value || !csrf) return;
+    try{
+      const gid = encodeURIComponent(guildSelect.value);
+      permissionData = await get(`/api/guilds/${gid}/permissions`);
+      permSection.hidden = false;
+      $p("permRole").replaceChildren(...permissionData.roles.map(role=>{const el=document.createElement("option");el.value=role.id;el.textContent=role.name;return el;}));
+      $p("permCommand").replaceChildren(...permissionData.permissions.map(name=>{const el=document.createElement("option");el.value=name;el.textContent=name==="dashboard.access"?"Dashboard access":`/${name}`;return el;}));
+      $p("permRows").innerHTML = table(["Type","ID","Permission","Decision"],permissionData.overrides.map(x=>[x.type,x.id,x.permission,x.allowed?"Allow":"Deny"]));
+      const audit=await get(`/api/guilds/${gid}/permissions/audit`);
+      $p("permAudit").innerHTML=table(["When","Target","Permission","Change"],audit.events.map(x=>[new Date(x.at*1000).toLocaleString(),`${x.type}: ${x.id}`,x.permission,`${x.old===null?"Inherit":x.old?"Allow":"Deny"} → ${x.new===null?"Inherit":x.new?"Allow":"Deny"}`]));
+    }catch(e){ if(!String(e.message).includes("Only the Discord server owner")) console.warn("Permission panel:",e.message); }
+  }
+  $p("permSave").addEventListener("click",async()=>{
+    if(!permissionData)return;
+    const kind=$p("permKind").value;
+    const id=(kind==="role"?$p("permRole").value:$p("permMember").value.trim());
+    if(!/^\d{15,22}$/.test(id)){ $p("permFeedback").textContent="Select a role or enter a valid member ID.";return; }
+    const permission=$p("permCommand").value;
+    const val=$p("permValue").value;
+    const allowed=val==="inherit"?null:val==="1";
+    if(!confirm(`Set ${kind} ${id}: ${permission} → ${val}?`))return;
+    $p("permSave").disabled=true;
+    try{
+      const response=await fetch(api+`/api/guilds/${encodeURIComponent(guildSelect.value)}/permissions`,{method:"PUT",credentials:"include",headers:{"Content-Type":"application/json","X-Pulse-CSRF":csrf},body:JSON.stringify({type:kind,id,permission,allowed})});
+      if(!response.ok)throw new Error((await response.text()).slice(0,240));
+      $p("permFeedback").textContent="Permission saved.";
+      await loadPermissions();
+    }catch(e){$p("permFeedback").textContent=e.message;}finally{$p("permSave").disabled=false;}
+  });
+
   const controls = document.createElement("div");
   controls.style.cssText = "display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:14px";
   const refreshBtn = document.createElement("button");
@@ -112,8 +164,8 @@
   }
   refreshBtn.addEventListener("click",loadData);
   search.addEventListener("input",()=>{searchText=search.value.trim().toLowerCase();render();});
-  async function init(){if(!configured()){setStatus("Setup required: edit dashboard-config.js and replace SET-YOUR-API-HOST with your secure HTTPS API address.");loginBtn.disabled=true;return}loginBtn.disabled=false;try{const me=await get("/api/me");csrf=me.csrf||"";loginBtn.hidden=true;logoutBtn.hidden=false;const g=await get("/api/guilds");guildSelect.innerHTML="";for(const item of g.guilds||[]){const o=document.createElement("option");o.value=item.id;o.textContent=item.name;guildSelect.appendChild(o)}guildSelect.disabled=!g.guilds?.length;if(!g.guilds?.length){guildSelect.innerHTML='<option>No manageable servers with the bot</option>';setStatus("No servers found where you have Manage Server/Administrator and the bot is present.");return}await loadData()}catch(e){loginBtn.hidden=false;logoutBtn.hidden=true;guildSelect.disabled=true;setStatus(e.message||"Sign in to continue.")}}
+  async function init(){if(!configured()){setStatus("Setup required: edit dashboard-config.js and replace SET-YOUR-API-HOST with your secure HTTPS API address.");loginBtn.disabled=true;return}loginBtn.disabled=false;try{const me=await get("/api/me");csrf=me.csrf||"";loginBtn.hidden=true;logoutBtn.hidden=false;const g=await get("/api/guilds");guildSelect.innerHTML="";for(const item of g.guilds||[]){const o=document.createElement("option");o.value=item.id;o.textContent=item.name;guildSelect.appendChild(o)}guildSelect.disabled=!g.guilds?.length;if(!g.guilds?.length){guildSelect.innerHTML='<option>No manageable servers with the bot</option>';setStatus("No servers found where you have Manage Server/Administrator and the bot is present.");return}await loadData();await loadPermissions()}catch(e){loginBtn.hidden=false;logoutBtn.hidden=true;guildSelect.disabled=true;setStatus(e.message||"Sign in to continue.")}}
   loginBtn.addEventListener("click",()=>{if(configured())location.href=api+"/api/login"});
   logoutBtn.addEventListener("click",async()=>{try{await fetch(api+"/api/logout",{method:"POST",credentials:"include",headers:{"X-Pulse-CSRF":csrf}})}catch{}location.reload()});
-  guildSelect.addEventListener("change",()=>{currentData=null;summary.textContent="";loadData();});init();
+  guildSelect.addEventListener("change",async()=>{currentData=null;summary.textContent="";await loadData();await loadPermissions();});init();
 })();
