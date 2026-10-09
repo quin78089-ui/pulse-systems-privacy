@@ -65,15 +65,39 @@
   <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:end">
   <label>Assign to <select class="dash-select" id="permKind"><option value="role">Role</option><option value="member">Member</option></select></label>
   <label id="permRoleWrap">Role <select class="dash-select" id="permRole"></select></label>
-  <label id="permMemberWrap" hidden>Member ID <input class="dash-select" id="permMember" placeholder="Discord user ID" inputmode="numeric"></label>
-  <label>Command or access <select class="dash-select" id="permCommand"></select></label>
+  <label id="permMemberWrap" hidden>Find member <input class="dash-select" id="permMemberSearch" placeholder="Search username or display name"><select class="dash-select" id="permMemberPick"><option value="">Select a member</option></select><input class="dash-select" id="permMember" placeholder="Or enter Discord user ID" inputmode="numeric"></label>
+  <label>Category <select class="dash-select" id="permCategory"><option value="all">All categories</option></select></label><label>Find command <input class="dash-select" id="permCommandSearch" placeholder="Search commands..."></label><label>Command or access <select class="dash-select" id="permCommand"></select></label>
   <label>Setting <select class="dash-select" id="permValue"><option value="1">Allow</option><option value="0">Deny</option><option value="inherit">Inherit / clear</option></select></label>
   <button class="button secondary dash-button" id="permSave" type="button">Save permission</button></div>
-  <p class="dash-muted" id="permFeedback" role="status"></p><h3>Current overrides</h3><div class="dash-scroll" id="permRows"></div><h3>Recent changes</h3><div class="dash-scroll" id="permAudit"></div>`;
+  <p class="dash-muted" id="permFeedback" role="status"></p><p class="dash-muted" id="permHint">Choose a role or member, then set each command to Allow, Deny, or Inherit.</p><h3>Current overrides</h3><div class="dash-scroll" id="permRows"></div><h3>Recent changes</h3><div class="dash-scroll" id="permAudit"></div>`;
   document.querySelector(".dash-grid").after(permSection);
   const $p = id => document.getElementById(id);
   $p("permKind").addEventListener("change",()=>{$p("permRoleWrap").hidden=$p("permKind").value!=="role";$p("permMemberWrap").hidden=$p("permKind").value!=="member";});
   let permissionData = null;
+  let members = [];
+  function categoryOf(name){return name==="dashboard.access"?"Dashboard":(name.includes(".")?name.split(".")[0]:"Other commands");}
+  function renderCommands(){
+    if(!permissionData)return;
+    const selected=$p("permCommand").value;
+    const term=$p("permCommandSearch").value.trim().toLowerCase();
+    const category=$p("permCategory").value;
+    const names=permissionData.permissions.filter(name=>(category==="all"||categoryOf(name)===category)&&name.toLowerCase().includes(term));
+    $p("permCommand").replaceChildren(...names.map(name=>{const el=document.createElement("option");el.value=name;el.textContent=name==="dashboard.access"?"Dashboard access":`/${name.replaceAll(".", " ")}`;return el;}));
+    if(names.includes(selected))$p("permCommand").value=selected;
+    $p("permSave").disabled=!names.length;
+    $p("permHint").textContent=names.length?`${names.length} matching permissions. Role rules and member overrides apply only to this server.`:"No matching commands. Try another category or search.";
+  }
+  $p("permCategory").addEventListener("change",renderCommands);
+  $p("permCommandSearch").addEventListener("input",renderCommands);
+  function renderMembers(){
+    const term=$p("permMemberSearch").value.trim().toLowerCase();
+    const matched=members.filter(m=>(m.name+" "+m.display_name+" "+m.id).toLowerCase().includes(term)).slice(0,100);
+    const previous=$p("permMemberPick").value;
+    $p("permMemberPick").replaceChildren(new Option("Select a member", ""),...matched.map(m=>new Option(`${m.display_name || m.name} (@${m.name})`,m.id)));
+    if(matched.some(m=>m.id===previous))$p("permMemberPick").value=previous;
+  }
+  $p("permMemberSearch").addEventListener("input",renderMembers);
+  $p("permMemberPick").addEventListener("change",()=>{if($p("permMemberPick").value)$p("permMember").value=$p("permMemberPick").value;});
   async function loadPermissions(){
     permSection.hidden = true;
     permissionData = null;
@@ -83,8 +107,15 @@
       permissionData = await get(`/api/guilds/${gid}/permissions`);
       permSection.hidden = false;
       $p("permRole").replaceChildren(...permissionData.roles.map(role=>{const el=document.createElement("option");el.value=role.id;el.textContent=role.name;return el;}));
-      $p("permCommand").replaceChildren(...permissionData.permissions.map(name=>{const el=document.createElement("option");el.value=name;el.textContent=name==="dashboard.access"?"Dashboard access":`/${name}`;return el;}));
-      $p("permRows").innerHTML = table(["Type","ID","Permission","Decision"],permissionData.overrides.map(x=>[x.type,x.id,x.permission,x.allowed?"Allow":"Deny"]));
+      const categories=[...new Set(permissionData.permissions.map(categoryOf))].sort();
+      const oldCat=$p("permCategory").value;
+      $p("permCategory").replaceChildren(new Option("All categories","all"),...categories.map(c=>new Option(c,c)));
+      if(categories.includes(oldCat))$p("permCategory").value=oldCat;
+      renderCommands();
+      try{const result=await get(`/api/guilds/${gid}/permissions/members`);members=result.members||[];renderMembers();}catch(e){members=[];$p("permHint").textContent="Member lookup unavailable. You can still enter a Discord user ID manually."; }
+      const roleNames=new Map(permissionData.roles.map(r=>[r.id,r.name]));
+      const memberNames=new Map(members.map(m=>[m.id,m.display_name||m.name]));
+      $p("permRows").innerHTML = table(["Type","Target","Permission","Decision"],permissionData.overrides.map(x=>[x.type,(x.type==="role"?roleNames:memberNames).get(x.id)||x.id,x.permission,x.allowed?"Allow":"Deny"]));
       const audit=await get(`/api/guilds/${gid}/permissions/audit`);
       $p("permAudit").innerHTML=table(["When","Target","Permission","Change"],audit.events.map(x=>[new Date(x.at*1000).toLocaleString(),`${x.type}: ${x.id}`,x.permission,`${x.old===null?"Inherit":x.old?"Allow":"Deny"} → ${x.new===null?"Inherit":x.new?"Allow":"Deny"}`]));
     }catch(e){ if(!String(e.message).includes("Only the Discord server owner")) console.warn("Permission panel:",e.message); }
