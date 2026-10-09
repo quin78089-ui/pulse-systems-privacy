@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#07101f"><title>Dashboard — Pulse Systems</title>
+  <link rel="icon" href="assets/pulse-mark.svg" type="image/svg+xml"><link rel="stylesheet" href="styles.css">
+  <style>
+    .dash-wrap{max-width:1120px;margin:42px auto 80px;padding:0 24px}.dash-head{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}.dash-panel{border:1px solid rgba(125,170,230,.18);background:rgba(10,22,42,.78);border-radius:18px;padding:22px;margin-top:20px;box-shadow:0 16px 50px #0002}.dash-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.dash-table{width:100%;border-collapse:collapse;font-size:14px}.dash-table th,.dash-table td{text-align:left;padding:11px;border-bottom:1px solid rgba(125,170,230,.15);vertical-align:top;overflow-wrap:anywhere}.dash-table th{color:#8ecbff}.dash-scroll{overflow:auto}.dash-muted{color:#a8b7cc}.dash-status{padding:12px 14px;border-radius:10px;background:rgba(60,130,220,.12);margin-top:14px}.dash-select{max-width:100%;min-width:260px;padding:12px;border-radius:9px;background:#0c1930;color:#eaf3ff;border:1px solid #304766}.dash-button{cursor:pointer}.dash-empty{color:#a8b7cc;padding:18px 0}@media(max-width:760px){.dash-grid{grid-template-columns:1fr}.dash-wrap{padding:0 16px}.dash-table{min-width:600px}}
+  </style>
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="index.html"><img src="assets/pulse-mark.svg" alt="" class="brand-mark"><span>PULSE <b>SYSTEMS</b></span></a><nav><a href="index.html">Home</a><a href="index.html#support">Support</a></nav></header>
+  <main class="dash-wrap">
+    <div class="dash-head"><div><div class="eyebrow">PULSE SYSTEMS / MANAGEMENT</div><h1>Server <span>dashboard.</span></h1><p class="dash-muted">Read-only view of your bot's current data.</p></div><div><button class="button secondary dash-button" id="loginBtn">Login with Discord</button> <button class="button secondary dash-button" id="logoutBtn" hidden>Sign out</button></div></div>
+    <div class="dash-panel"><label for="guildSelect">Choose a server</label><br><select class="dash-select" id="guildSelect" disabled><option>Sign in to load servers</option></select><div class="dash-status" id="status" role="status">Set your API address in dashboard-config.js before signing in.</div></div>
+    <div class="dash-grid">
+      <section class="dash-panel"><h2>Moderation logs</h2><p class="dash-muted">Latest cases recorded by the bot.</p><div class="dash-scroll" id="logs"><p class="dash-empty">No data loaded.</p></div></section>
+      <section class="dash-panel"><h2>Discord roles</h2><p class="dash-muted">Roles and their server positions.</p><div class="dash-scroll" id="roles"><p class="dash-empty">No data loaded.</p></div></section>
+      <section class="dash-panel"><h2>Roblox mappings</h2><p class="dash-muted">Existing group/rank to Discord role mappings.</p><div id="roblox"><p class="dash-empty">No data loaded.</p></div></section>
+      <section class="dash-panel"><h2>Announcements & SSU</h2><p class="dash-muted">Current opt-in panel and recent SSU sessions.</p><div id="announcements"><p class="dash-empty">No data loaded.</p></div></section>
+    </div>
+    <p class="dash-muted" style="margin-top:22px">This initial dashboard is read-only. Role changes, configuration changes and sending announcements are not enabled yet.</p>
+  </main>
+  <script src="dashboard-config.js"></script><script src="dashboard.js"></script>
+</body></html>
