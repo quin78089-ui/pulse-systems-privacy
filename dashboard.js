@@ -1,5 +1,5 @@
 (() => {
-  const api = (window.PULSE_API_BASE || "").replace(/\/$/, "");
+  const api = (window.PULSE_DASHBOARD_CONFIG?.apiBaseUrl || "").replace(/\/$/, "");
   const status = document.getElementById("status");
   const guildSelect = document.getElementById("guildSelect");
   const loginBtn = document.getElementById("loginBtn");
