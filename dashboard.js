@@ -5,6 +5,7 @@
   const loginBtn = document.getElementById("loginBtn");
   const logoutBtn = document.getElementById("logoutBtn");
   let csrf = "";
+  let guildAccess = new Map();
   let currentData = null;
   let searchText = "";
   let isLoading = false;
@@ -75,14 +76,14 @@
   $p("permKind").addEventListener("change",()=>{$p("permRoleWrap").hidden=$p("permKind").value!=="role";$p("permMemberWrap").hidden=$p("permKind").value!=="member";});
   let permissionData = null;
   let members = [];
-  function categoryOf(name){return name==="dashboard.access"?"Dashboard":(name.includes(".")?name.split(".")[0]:"Other commands");}
+  function categoryOf(name){return name==="member.manage"?"Member Management":name==="dashboard.access"?"Dashboard":(name.includes(".")?name.split(".")[0]:"Other commands");}
   function renderCommands(){
     if(!permissionData)return;
     const selected=$p("permCommand").value;
     const term=$p("permCommandSearch").value.trim().toLowerCase();
     const category=$p("permCategory").value;
     const names=permissionData.permissions.filter(name=>(category==="all"||categoryOf(name)===category)&&name.toLowerCase().includes(term));
-    $p("permCommand").replaceChildren(...names.map(name=>{const el=document.createElement("option");el.value=name;el.textContent=name==="dashboard.access"?"Dashboard access":`/${name.replaceAll(".", " ")}`;return el;}));
+    $p("permCommand").replaceChildren(...names.map(name=>{const el=document.createElement("option");el.value=name;el.textContent=name==="member.manage"?"Member Management access":name==="dashboard.access"?"Dashboard access":`/${name.replaceAll(".", " ")}`;return el;}));
     if(names.includes(selected))$p("permCommand").value=selected;
     $p("permSave").disabled=!names.length;
     $p("permHint").textContent=names.length?`${names.length} matching permissions. Role rules and member overrides apply only to this server.`:"No matching commands. Try another category or search.";
@@ -101,7 +102,7 @@
   async function loadPermissions(){
     permSection.hidden = true;
     permissionData = null;
-    if(!guildSelect.value || !csrf) return;
+    if(!guildSelect.value || !csrf || !guildAccess.get(guildSelect.value)?.dashboard_access) return;
     try{
       const gid = encodeURIComponent(guildSelect.value);
       permissionData = await get(`/api/guilds/${gid}/permissions`);
@@ -262,6 +263,7 @@
   async function loadData(){
     const gid=guildSelect.value;
     if(!gid||isLoading)return;
+    if(!guildAccess.get(gid)?.dashboard_access){setStatus("Member Management access granted. Use Members from the sidebar.");return;}
     isLoading=true;refreshBtn.disabled=true;setStatus("Loading server data…");
     try {
       const [l,r,rb,a]=await Promise.all([get(`/api/guilds/${encodeURIComponent(gid)}/logs?limit=100`),get(`/api/guilds/${encodeURIComponent(gid)}/roles`),get(`/api/guilds/${encodeURIComponent(gid)}/roblox-mappings`),get(`/api/guilds/${encodeURIComponent(gid)}/announcement-settings`)]);
@@ -272,8 +274,110 @@
   }
   refreshBtn.addEventListener("click",loadData);
   search.addEventListener("input",()=>{searchText=search.value.trim().toLowerCase();render();});
-  async function init(){if(!configured()){setStatus("Setup required: edit dashboard-config.js and replace SET-YOUR-API-HOST with your secure HTTPS API address.");loginBtn.disabled=true;return}loginBtn.disabled=false;try{const me=await get("/api/me");csrf=me.csrf||"";loginBtn.hidden=true;logoutBtn.hidden=false;const g=await get("/api/guilds");guildSelect.innerHTML="";for(const item of g.guilds||[]){const o=document.createElement("option");o.value=item.id;o.textContent=item.name;guildSelect.appendChild(o)}guildSelect.disabled=!g.guilds?.length;if(!g.guilds?.length){guildSelect.innerHTML='<option>No manageable servers with the bot</option>';setStatus("No servers found where you have Manage Server/Administrator and the bot is present.");return}await loadData();await loadPermissions()}catch(e){loginBtn.hidden=false;logoutBtn.hidden=true;guildSelect.disabled=true;setStatus(e.message||"Sign in to continue.")}}
+  // Move existing panels into sidebar-selectable views without recreating their
+  // contents: this keeps every existing event listener and form intact.
+  const main=document.querySelector(".pulse-main");
+  const grid=document.querySelector(".dash-grid");
+  const originalPanels=Array.from(grid.children);
+  const mappingPanel=mappingEditor;
+  const viewNodes={};
+  for(const key of ["overview","moderation","members","roles","roblox","announcements","permissions"]){
+    const section=document.createElement("div");
+    section.className="pulse-view";
+    section.dataset.viewPanel=key;
+    section.hidden=key!=="overview";
+    main.append(section);
+    viewNodes[key]=section;
+  }
+  // Keep server picker, status and refresh/search controls visible on Overview.
+  const serverPanel=guildSelect.closest(".dash-panel");
+  viewNodes.overview.append(serverPanel,controls,summary);
+  viewNodes.moderation.append(originalPanels[0]);
+  viewNodes.roles.append(originalPanels[1]);
+  viewNodes.roblox.append(mappingPanel,originalPanels[2]);
+  viewNodes.announcements.append(originalPanels[3]);
+  viewNodes.members.append(modPanel);
+  viewNodes.permissions.append(permSection);
+  grid.remove();
+  // Server picker must remain accessible when switching between sections.
+  const selectorBar=document.createElement("div");
+  selectorBar.className="dash-panel";
+  selectorBar.style.marginTop="16px";
+  selectorBar.append(document.createElement("label"));
+  selectorBar.firstChild.textContent="Selected server";
+  const selectorCopy=document.createElement("select");
+  selectorCopy.className="dash-select";
+  selectorCopy.disabled=true;
+  selectorCopy.setAttribute("aria-label","Selected server");
+  selectorBar.append(selectorCopy);
+  main.querySelector(".dash-head").after(selectorBar);
+  function syncServerSelector(){
+    selectorCopy.replaceChildren(...Array.from(guildSelect.options).map(o=>new Option(o.text,o.value)));
+    selectorCopy.value=guildSelect.value;
+    selectorCopy.disabled=guildSelect.disabled;
+  }
+  selectorCopy.addEventListener("change",()=>{guildSelect.value=selectorCopy.value;guildSelect.dispatchEvent(new Event("change"));});
+  const observer=new MutationObserver(syncServerSelector);
+  observer.observe(guildSelect,{childList:true,attributes:true,subtree:true});
+  guildSelect.addEventListener("change",syncServerSelector);
+  syncServerSelector();
+  const nav=document.getElementById("pulseSideNav");
+  function selectView(key){
+    if(!guildAccess.get(guildSelect.value)?.dashboard_access && key!=="members")key="members";
+    for(const [name,node] of Object.entries(viewNodes))node.hidden=name!==key;
+    nav.querySelectorAll("[data-view]").forEach(b=>{
+      const active=b.dataset.view===key;
+      b.classList.toggle("pulse-nav-active",active);
+      b.setAttribute("aria-current",active?"page":"false");
+    });
+    try{sessionStorage.setItem("pulse-view",key);}catch{}
+  }
+  nav.addEventListener("click",e=>{
+    const button=e.target.closest("[data-view]");
+    if(button)selectView(button.dataset.view);
+  });
+  function updateAccessUI(){
+    const access=guildAccess.get(guildSelect.value);
+    const broad=!!access?.dashboard_access;
+    nav.querySelectorAll("[data-view]").forEach(button=>{
+      button.hidden=!broad && button.dataset.view!=="members";
+    });
+    selectView(!broad?"members":(nav.querySelector(".pulse-nav-active")?.dataset.view||"overview"));
+    const membersEnabled=!!access?.member_management;
+    viewNodes.members.querySelectorAll("input,select,textarea,button").forEach(el=>el.disabled=!membersEnabled);
+    if(membersEnabled){
+      get(`/api/guilds/${encodeURIComponent(guildSelect.value)}/members/access`).then(data=>{
+        $m("modAction").querySelectorAll("option").forEach(o=>o.disabled=!data.actions[o.value]);
+        $m("modSubmit").disabled=!(data.actions.warn||data.actions.note);
+        $m("modHistory").disabled=!data.actions.history;
+      }).catch(e=>{$m("modFeedback").textContent=e.message;});
+    }
+  }
+  let initialView="overview";
+  try{initialView=sessionStorage.getItem("pulse-view")||"overview";}catch{}
+  selectView(viewNodes[initialView]?initialView:"overview");
+  function updateAccount(user){
+    const avatar=document.getElementById("pulseAvatar");
+    const label=document.getElementById("pulseAccountName");
+    if(!user){
+      avatar.replaceWith(Object.assign(document.createElement("span"),{id:"pulseAvatar",className:"pulse-avatar pulse-avatar-guest",textContent:"?"}));
+      label.textContent="Not signed in";
+      loginBtn.hidden=false;logoutBtn.hidden=true;
+      return;
+    }
+    const img=document.createElement("img");
+    img.id="pulseAvatar";img.className="pulse-avatar";img.alt="Discord profile picture";
+    const uid=String(user.id||"");
+    img.src=user.avatar&&/^\\d+$/.test(uid)&&/^[a-zA-Z0-9_]+$/.test(user.avatar)
+      ? `https://cdn.discordapp.com/avatars/${uid}/${user.avatar}.${user.avatar.startsWith("a_")?"gif":"png"}?size=128`
+      : `https://cdn.discordapp.com/embed/avatars/${Number(BigInt(uid||"0")%6n)}.png`;
+    img.onerror=()=>{img.onerror=null;img.src="https://cdn.discordapp.com/embed/avatars/0.png";};
+    avatar.replaceWith(img);
+    label.textContent=user.global_name||user.username||"Discord user";
+    loginBtn.hidden=true;logoutBtn.hidden=false;
+  }
+  async function init(){if(!configured()){setStatus("Setup required: edit dashboard-config.js and replace SET-YOUR-API-HOST with your secure HTTPS API address.");loginBtn.disabled=true;return}loginBtn.disabled=false;try{const me=await get("/api/me");csrf=me.csrf||"";updateAccount(me.user);const g=await get("/api/guilds");guildAccess=new Map((g.guilds||[]).map(x=>[x.id,x]));guildSelect.innerHTML="";for(const item of g.guilds||[]){const o=document.createElement("option");o.value=item.id;o.textContent=item.name;guildSelect.appendChild(o)}guildSelect.disabled=!g.guilds?.length;syncServerSelector();if(!g.guilds?.length){guildSelect.innerHTML='<option>No manageable servers with the bot</option>';setStatus("No servers found where you have Manage Server/Administrator and the bot is present.");return}updateAccessUI();await loadData();await loadPermissions()}catch(e){updateAccount(null);guildSelect.disabled=true;setStatus(e.message||"Sign in to continue.")}}
   loginBtn.addEventListener("click",()=>{if(configured())location.href=api+"/api/login"});
-  logoutBtn.addEventListener("click",async()=>{try{await fetch(api+"/api/logout",{method:"POST",credentials:"include",headers:{"X-Pulse-CSRF":csrf}})}catch{}location.reload()});
-  guildSelect.addEventListener("change",async()=>{currentData=null;summary.textContent="";await loadData();await loadPermissions();});init();
+  logoutBtn.addEventListener("click",async()=>{try{await fetch(api+"/api/logout",{method:"POST",credentials:"include",headers:{"X-Pulse-CSRF":csrf}})}catch{}updateAccount(null);location.reload()});
+  guildSelect.addEventListener("change",async()=>{currentData=null;summary.textContent="";updateAccessUI();await loadData();await loadPermissions();});init();
 })();

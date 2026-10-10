@@ -7,11 +7,33 @@
   <style>
     .dash-wrap{max-width:1120px;margin:42px auto 80px;padding:0 24px}.dash-head{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}.dash-panel{border:1px solid rgba(125,170,230,.18);background:rgba(10,22,42,.78);border-radius:18px;padding:22px;margin-top:20px;box-shadow:0 16px 50px #0002}.dash-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.dash-table{width:100%;border-collapse:collapse;font-size:14px}.dash-table th,.dash-table td{text-align:left;padding:11px;border-bottom:1px solid rgba(125,170,230,.15);vertical-align:top;overflow-wrap:anywhere}.dash-table th{color:#8ecbff}.dash-scroll{overflow:auto}.dash-muted{color:#a8b7cc}.dash-status{padding:12px 14px;border-radius:10px;background:rgba(60,130,220,.12);margin-top:14px}.dash-select{max-width:100%;min-width:260px;padding:12px;border-radius:9px;background:#0c1930;color:#eaf3ff;border:1px solid #304766}.dash-button{cursor:pointer}.dash-empty{color:#a8b7cc;padding:18px 0}@media(max-width:760px){.dash-grid{grid-template-columns:1fr}.dash-wrap{padding:0 16px}.dash-table{min-width:600px}}
   </style>
-</head>
+<style>
+.pulse-layout{display:grid;grid-template-columns:245px minmax(0,1fr);min-height:calc(100vh - 70px)}
+.pulse-sidebar{background:#081426;border-right:1px solid rgba(125,170,230,.2);padding:28px 14px;position:sticky;top:0;height:calc(100vh - 70px);overflow:auto}
+.pulse-sidebar-title{color:#8cb6e2;font-size:11px;letter-spacing:.18em;font-weight:800;padding:0 12px 16px}
+.pulse-side-nav{display:grid;gap:7px}
+.pulse-side-nav button{width:100%;text-align:left;border:1px solid transparent;background:transparent;color:#bacce4;border-radius:11px;padding:13px 14px;font:inherit;cursor:pointer}
+.pulse-side-nav button:hover,.pulse-side-nav button.pulse-nav-active{background:#183152;color:white;border-color:#345f8c}
+.pulse-main{width:100%;max-width:1400px;margin:24px auto 80px;min-width:0}
+.pulse-account{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.pulse-avatar{width:44px;height:44px;flex-shrink:0;border-radius:50%;object-fit:cover;border:2px solid #426da0;background:#162b49;display:grid;place-items:center;color:#c8ddf5;font-weight:700}
+.pulse-account-name{color:#d8eaff;font-weight:600;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pulse-view[hidden]{display:none!important}
+.pulse-view>.dash-panel{margin-top:0}
+@media(max-width:900px){.pulse-layout{display:block}.pulse-sidebar{position:static;height:auto;padding:12px;overflow-x:auto}.pulse-sidebar-title{display:none}.pulse-side-nav{display:flex;width:max-content;gap:5px}.pulse-side-nav button{width:auto;white-space:nowrap}.pulse-main{margin:20px auto;padding:0 14px}.pulse-account-name{display:none}}
+</style></head>
 <body>
   <header class="topbar"><a class="brand" href="index.html"><img src="assets/pulse-mark.svg" alt="" class="brand-mark"><span>PULSE <b>SYSTEMS</b></span></a><nav><a href="index.html">Home</a><a href="index.html#support">Support</a></nav></header>
-  <main class="dash-wrap">
-    <div class="dash-head"><div><div class="eyebrow">PULSE SYSTEMS / MANAGEMENT</div><h1>Server <span>dashboard.</span></h1><p class="dash-muted">Manage Roblox mappings and view your bot's current data.</p></div><div><button class="button secondary dash-button" id="loginBtn">Login with Discord</button> <button class="button secondary dash-button" id="logoutBtn" hidden>Sign out</button></div></div>
+  <div class="pulse-layout"><aside class="pulse-sidebar" aria-label="Dashboard sections"><div class="pulse-sidebar-title">MANAGEMENT</div><nav class="pulse-side-nav" id="pulseSideNav">
+<button type="button" data-view="overview" class="pulse-nav-active">◫ Overview</button>
+<button type="button" data-view="moderation">⚑ Moderation</button>
+<button type="button" data-view="members">♙ Members</button>
+<button type="button" data-view="roles">♧ Discord roles</button>
+<button type="button" data-view="roblox">◇ Roblox mappings</button>
+<button type="button" data-view="announcements">◈ Announcements &amp; SSU</button>
+<button type="button" data-view="permissions">⚙ Permissions</button>
+</nav></aside><main class="dash-wrap pulse-main">
+    <div class="dash-head"><div><div class="eyebrow">PULSE SYSTEMS / MANAGEMENT</div><h1>Server <span>dashboard.</span></h1><p class="dash-muted">Manage Roblox mappings and view your bot's current data.</p></div><div class="pulse-account" id="pulseAccount"><span class="pulse-avatar pulse-avatar-guest" id="pulseAvatar" aria-hidden="true">?</span><span class="pulse-account-name" id="pulseAccountName">Not signed in</span><button class="button secondary dash-button" id="loginBtn">Sign in with Discord</button><button class="button secondary dash-button" id="logoutBtn" hidden>Log Out</button></div></div>
     <div class="dash-panel"><label for="guildSelect">Choose a server</label><br><select class="dash-select" id="guildSelect" disabled><option>Sign in to load servers</option></select><div class="dash-status" id="status" role="status">Set your API address in dashboard-config.js before signing in.</div></div>
     <div class="dash-grid">
       <section class="dash-panel"><h2>Moderation logs</h2><p class="dash-muted">Latest cases recorded by the bot.</p><div class="dash-scroll" id="logs"><p class="dash-empty">No data loaded.</p></div></section>
@@ -20,6 +42,6 @@
       <section class="dash-panel"><h2>Announcements & SSU</h2><p class="dash-muted">Current opt-in panel and recent SSU sessions.</p><div id="announcements"><p class="dash-empty">No data loaded.</p></div></section>
     </div>
     <p class="dash-muted" style="margin-top:22px">Roblox mappings can be edited here. Other dashboard sections remain read-only.</p>
-  </main>
-  <script src="dashboard-config.js?v=20261010-3"></script><script src="dashboard.js?v=20261010-7"></script>
+  </main></div>
+  <script src="dashboard-config.js?v=20261010-3"></script><script src="dashboard.js?v=20261010-staff-1"></script>
 </body></html>
