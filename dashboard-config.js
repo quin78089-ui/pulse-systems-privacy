@@ -1,3 +1,3 @@
 window.PULSE_DASHBOARD_CONFIG = {
-   apiBaseUrl: "https://camcorder-scsi-infections-freedom.trycloudflare.com"
+   apiBaseUrl: "https://install-rrp-homepage-pair.trycloudflare.com"
 };
