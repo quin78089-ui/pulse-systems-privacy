@@ -166,6 +166,55 @@
     }catch(e){$p("permFeedback").textContent=e.message;}finally{$p("permSave").disabled=false;}
   });
 
+  // Moderation actions use live server-side checks, not just hidden buttons.
+  const modPanel=document.createElement("section");
+  modPanel.className="dash-panel";
+  modPanel.innerHTML=`<h2>Member management</h2><p class="dash-muted">Search members, view their moderation history, issue warnings, and add private staff notes.</p>
+    <div style="display:grid;gap:10px">
+    <label>Search members <input class="dash-select" id="modSearch" placeholder="Username, display name, or ID"></label>
+    <select class="dash-select" id="modMemberList"><option value="">Select a member (or enter ID below)</option></select>
+    <label>Member ID <input class="dash-select" id="modUserId" placeholder="Discord user ID" inputmode="numeric"></label>
+    <button class="button secondary dash-button" id="modHistory" type="button">View member history</button>
+    <div class="dash-scroll" id="modHistoryRows"></div>
+    <label>Action <select class="dash-select" id="modAction"><option value="warn">Warn member</option><option value="note">Add staff note</option></select></label>
+    <label>Reason / note <textarea class="dash-select" id="modReason" maxlength="1000" rows="3" placeholder="Required reason"></textarea></label>
+    <button class="button secondary dash-button" id="modSubmit" type="button">Confirm action</button>
+    <p class="dash-muted" id="modFeedback" role="status"></p></div>`;
+  permSection.after(modPanel);
+  const $m=id=>document.getElementById(id);
+  let memberSearchSeq=0;
+  $m("modSearch").addEventListener("input",async()=>{
+    const q=$m("modSearch").value.trim(), seq=++memberSearchSeq;
+    if(q.length<2||!guildSelect.value)return;
+    try{
+      const result=await get(`/api/guilds/${encodeURIComponent(guildSelect.value)}/members/search?q=${encodeURIComponent(q)}`);
+      if(seq!==memberSearchSeq)return;
+      $m("modMemberList").replaceChildren(new Option("Select a member",""),...(result.members||[]).map(m=>new Option(`${m.display_name} (@${m.name})`,m.id)));
+    }catch(e){if(seq===memberSearchSeq)$m("modFeedback").textContent=e.message;}
+  });
+  $m("modMemberList").addEventListener("change",()=>{if($m("modMemberList").value)$m("modUserId").value=$m("modMemberList").value;});
+  $m("modHistory").addEventListener("click",async()=>{
+    const uid=$m("modUserId").value.trim();
+    if(!/^\\d{15,22}$/.test(uid)){$m("modFeedback").textContent="Enter a valid member ID.";return;}
+    try{
+      const result=await get(`/api/guilds/${encodeURIComponent(guildSelect.value)}/members/${uid}/history`);
+      $m("modHistoryRows").innerHTML="<h3>Cases</h3>"+table(["Case","Action","Reason","Date"],(result.cases||[]).map(x=>[x.case,x.action+(x.removed?" (removed)":""),x.reason,new Date(x.created_at*1000).toLocaleString()]))+
+      "<h3>Private staff notes</h3>"+table(["Note","Text","Date"],(result.notes||[]).map(x=>[x.id,x.text,new Date(x.created_at*1000).toLocaleString()]));
+      $m("modFeedback").textContent="History loaded.";
+    }catch(e){$m("modFeedback").textContent=e.message;}
+  });
+  $m("modSubmit").addEventListener("click",async()=>{
+    const user_id=$m("modUserId").value.trim(),reason=$m("modReason").value.trim(),action=$m("modAction").value;
+    if(!/^\\d{15,22}$/.test(user_id)||!reason){$m("modFeedback").textContent="Enter a valid member ID and reason.";return;}
+    if(!confirm(`Are you sure you want to ${action} member ${user_id}?`))return;
+    $m("modSubmit").disabled=true;$m("modFeedback").textContent="Submitting…";
+    try{
+      const r=await fetch(api+`/api/guilds/${encodeURIComponent(guildSelect.value)}/moderation/actions`,{method:"POST",credentials:"include",headers:{"Content-Type":"application/json","X-Pulse-CSRF":csrf},body:JSON.stringify({action,user_id,reason})});
+      if(!r.ok)throw new Error((await r.text()).slice(0,240));
+      const result=await r.json();$m("modFeedback").textContent=result.message;
+      $m("modReason").value="";await loadData();
+    }catch(e){$m("modFeedback").textContent=e.message;}finally{$m("modSubmit").disabled=false;}
+  });
   const controls = document.createElement("div");
   controls.style.cssText = "display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:14px";
   const refreshBtn = document.createElement("button");
@@ -217,7 +266,7 @@
     try {
       const [l,r,rb,a]=await Promise.all([get(`/api/guilds/${encodeURIComponent(gid)}/logs?limit=100`),get(`/api/guilds/${encodeURIComponent(gid)}/roles`),get(`/api/guilds/${encodeURIComponent(gid)}/roblox-mappings`),get(`/api/guilds/${encodeURIComponent(gid)}/announcement-settings`)]);
       currentData={l,r,rb,a};search.disabled=false;render();
-      setStatus("Connected. Last refreshed: "+new Date().toLocaleTimeString()+" · Read-only data.");
+      setStatus("Connected. Last refreshed: "+new Date().toLocaleTimeString()+" · Live dashboard.");
     } catch(e) {setStatus(e.message||"Could not load dashboard data.");}
     finally {isLoading=false;refreshBtn.disabled=false;}
   }
