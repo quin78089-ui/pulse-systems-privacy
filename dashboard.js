@@ -8,7 +8,7 @@
   let guildAccess = new Map();
   let currentData = null;
   let searchText = "";
-  let isLoading = false;
+  let loadSequence = 0;
   const safe = (v) => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   function configured(){return api && !api.includes("SET-YOUR-API-HOST") && /^https:\/\//i.test(api)}
   async function get(path){const r=await fetch(api+path,{credentials:"include",headers:{"Accept":"application/json"}});if(!r.ok)throw new Error(r.status===401?"Please sign in with Discord.":(await r.text()).slice(0,180)||`Request failed (${r.status})`);return r.json()}
@@ -262,15 +262,40 @@
   }
   async function loadData(){
     const gid=guildSelect.value;
-    if(!gid||isLoading)return;
-    if(!guildAccess.get(gid)?.dashboard_access){setStatus("Member Management access granted. Use Members from the sidebar.");return;}
-    isLoading=true;refreshBtn.disabled=true;setStatus("Loading server data…");
+    const sequence=++loadSequence;
+    if(!gid)return;
+    currentData=null;
+    search.disabled=true;
+    refreshBtn.disabled=true;
+    for(const id of ["logs","roles","roblox","announcements"]){
+      document.getElementById(id).innerHTML='<p class="dash-empty">Loading selected server…</p>';
+    }
+    if(!guildAccess.get(gid)?.dashboard_access){
+      setStatus("The API has not granted dashboard access for this server. If you own it, check the API permission checks and confirm the bot is in that server.");
+      refreshBtn.disabled=false;
+      return;
+    }
+    setStatus("Loading server data…");
     try {
-      const [l,r,rb,a]=await Promise.all([get(`/api/guilds/${encodeURIComponent(gid)}/logs?limit=100`),get(`/api/guilds/${encodeURIComponent(gid)}/roles`),get(`/api/guilds/${encodeURIComponent(gid)}/roblox-mappings`),get(`/api/guilds/${encodeURIComponent(gid)}/announcement-settings`)]);
+      const id=encodeURIComponent(gid);
+      const [l,r,rb,a]=await Promise.all([
+        get(`/api/guilds/${id}/logs?limit=100`),
+        get(`/api/guilds/${id}/roles`),
+        get(`/api/guilds/${id}/roblox-mappings`),
+        get(`/api/guilds/${id}/announcement-settings`)
+      ]);
+      if(sequence!==loadSequence || guildSelect.value!==gid)return;
       currentData={l,r,rb,a};search.disabled=false;render();
       setStatus("Connected. Last refreshed: "+new Date().toLocaleTimeString()+" · Live dashboard.");
-    } catch(e) {setStatus(e.message||"Could not load dashboard data.");}
-    finally {isLoading=false;refreshBtn.disabled=false;}
+    } catch(e) {
+      if(sequence!==loadSequence || guildSelect.value!==gid)return;
+      setStatus("Could not load "+(guildSelect.selectedOptions[0]?.textContent||"selected server")+": "+(e.message||"Unknown error"));
+      for(const id of ["logs","roles","roblox","announcements"]){
+        document.getElementById(id).innerHTML='<p class="dash-empty">Unable to load data for this server.</p>';
+      }
+    } finally {
+      if(sequence===loadSequence)refreshBtn.disabled=false;
+    }
   }
   refreshBtn.addEventListener("click",loadData);
   search.addEventListener("input",()=>{searchText=search.value.trim().toLowerCase();render();});
