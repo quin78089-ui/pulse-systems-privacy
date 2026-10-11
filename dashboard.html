@@ -21,9 +21,9 @@
 .pulse-view[hidden]{display:none!important}
 .pulse-view>.dash-panel{margin-top:0}
 @media(max-width:900px){.pulse-layout{display:block}.pulse-sidebar{position:static;height:auto;padding:12px;overflow-x:auto}.pulse-sidebar-title{display:none}.pulse-side-nav{display:flex;width:max-content;gap:5px}.pulse-side-nav button{width:auto;white-space:nowrap}.pulse-main{margin:20px auto;padding:0 14px}.pulse-account-name{display:none}}
-</style></head>
+ .backservers{display:inline-block;color:#9bc8ff;font-weight:700;margin-bottom:8px} .pulse-main .dash-head h1{font-size:34px} </style></head>
 <body>
-  <header class="topbar"><a class="brand" href="index.html"><img src="assets/pulse-mark.svg" alt="" class="brand-mark"><span>PULSE <b>SYSTEMS</b></span></a><nav><a href="index.html">Home</a><a href="index.html#support">Support</a></nav></header>
+  <header class="topbar"><a class="brand" href="index.html"><img src="assets/pulse-mark.svg" alt="" class="brand-mark"><span>PULSE <b>SYSTEMS</b></span></a><nav><a href="index.html">Home</a><a href="servers.html">All Servers</a></nav></header>
   <div class="pulse-layout"><aside class="pulse-sidebar" aria-label="Dashboard sections"><div class="pulse-sidebar-title">MANAGEMENT</div><nav class="pulse-side-nav" id="pulseSideNav">
 <button type="button" data-view="overview" class="pulse-nav-active">◫ Overview</button>
 <button type="button" data-view="moderation">⚑ Moderation</button>
@@ -34,8 +34,8 @@
 <button type="button" data-view="permissions">⚙ Permissions</button>
 <a href="events.html" style="display:block;padding:13px 14px;color:#bacce4;text-decoration:none">▣ Events Manager ↗</a>
 </nav></aside><main class="dash-wrap pulse-main">
-    <div class="dash-head"><div><div class="eyebrow">PULSE SYSTEMS / MANAGEMENT</div><h1>Server <span>dashboard.</span></h1><p class="dash-muted">Manage Roblox mappings and view your bot's current data.</p></div><div class="pulse-account" id="pulseAccount"><span class="pulse-avatar pulse-avatar-guest" id="pulseAvatar" aria-hidden="true">?</span><span class="pulse-account-name" id="pulseAccountName">Not signed in</span><button class="button secondary dash-button" id="loginBtn">Sign in with Discord</button><button class="button secondary dash-button" id="logoutBtn" hidden>Log Out</button></div></div>
-    <div class="dash-panel"><label for="guildSelect">Choose a server</label><br><select class="dash-select" id="guildSelect" disabled><option>Sign in to load servers</option></select><div class="dash-status" id="status" role="status">Set your API address in dashboard-config.js before signing in.</div></div>
+    <div class="dash-head"><div><div class="eyebrow">PULSE SYSTEMS / MANAGEMENT</div><h1>Server <span>management.</span></h1><p class="dash-muted">Manage Roblox mappings and view your bot's current data.</p></div><div class="pulse-account" id="pulseAccount"><span class="pulse-avatar pulse-avatar-guest" id="pulseAvatar" aria-hidden="true">?</span><span class="pulse-account-name" id="pulseAccountName">Not signed in</span><button class="button secondary dash-button" id="loginBtn">Sign in with Discord</button><button class="button secondary dash-button" id="logoutBtn" hidden>Log Out</button></div></div>
+    <div class="dash-panel"><a href="servers.html" class="backservers">← Back to your servers</a><br><select style="display:none" class="dash-select" id="guildSelect" disabled><option>Sign in to load servers</option></select><div class="dash-status" id="status" role="status">Set your API address in dashboard-config.js before signing in.</div></div>
     <div class="dash-grid">
       <section class="dash-panel"><h2>Moderation logs</h2><p class="dash-muted">Latest cases recorded by the bot.</p><div class="dash-scroll" id="logs"><p class="dash-empty">No data loaded.</p></div></section>
       <section class="dash-panel"><h2>Discord roles</h2><p class="dash-muted">Roles and their server positions.</p><div class="dash-scroll" id="roles"><p class="dash-empty">No data loaded.</p></div></section>

@@ -336,6 +336,7 @@
   selectorCopy.setAttribute("aria-label","Selected server");
   selectorBar.append(selectorCopy);
   main.querySelector(".dash-head").after(selectorBar);
+  selectorBar.style.display="none";
   function syncServerSelector(){
     selectorCopy.replaceChildren(...Array.from(guildSelect.options).map(o=>new Option(o.text,o.value)));
     selectorCopy.value=guildSelect.value;
@@ -401,7 +402,7 @@
     label.textContent=user.global_name||user.username||"Discord user";
     loginBtn.hidden=true;logoutBtn.hidden=false;
   }
-  async function init(){if(!configured()){setStatus("Setup required: edit dashboard-config.js and replace SET-YOUR-API-HOST with your secure HTTPS API address.");loginBtn.disabled=true;return}loginBtn.disabled=false;try{const me=await get("/api/me");csrf=me.csrf||"";updateAccount(me.user);const g=await get("/api/guilds");guildAccess=new Map((g.guilds||[]).map(x=>[x.id,x]));guildSelect.innerHTML="";for(const item of g.guilds||[]){const o=document.createElement("option");o.value=item.id;o.textContent=item.name;guildSelect.appendChild(o)}guildSelect.disabled=!g.guilds?.length;syncServerSelector();if(!g.guilds?.length){guildSelect.innerHTML='<option>No manageable servers with the bot</option>';setStatus("No servers found where you have Manage Server/Administrator and the bot is present.");return}updateAccessUI();await loadData();await loadPermissions()}catch(e){updateAccount(null);guildSelect.disabled=true;setStatus(e.message||"Sign in to continue.")}}
+  async function init(){if(!configured()){setStatus("Setup required: edit dashboard-config.js and replace SET-YOUR-API-HOST with your secure HTTPS API address.");loginBtn.disabled=true;return}loginBtn.disabled=false;try{const me=await get("/api/me");csrf=me.csrf||"";updateAccount(me.user);const g=await get("/api/guilds");guildAccess=new Map((g.guilds||[]).map(x=>[x.id,x]));guildSelect.innerHTML="";for(const item of g.guilds||[]){const o=document.createElement("option");o.value=item.id;o.textContent=item.name;guildSelect.appendChild(o)}guildSelect.disabled=!g.guilds?.length;const requested=new URLSearchParams(location.search).get("guild");if(requested && guildAccess.has(requested))guildSelect.value=requested;syncServerSelector();if(!g.guilds?.length){guildSelect.innerHTML='<option>No manageable servers with the bot</option>';setStatus("No servers found where you have Manage Server/Administrator and the bot is present.");return}updateAccessUI();await loadData();await loadPermissions()}catch(e){updateAccount(null);guildSelect.disabled=true;setStatus(e.message||"Sign in to continue.");if(String(e.message).includes("sign in")||String(e.message).includes("401"))location.replace("login.html")}}
   loginBtn.addEventListener("click",()=>{if(configured())location.href=api+"/api/login"});
   logoutBtn.addEventListener("click",async()=>{try{await fetch(api+"/api/logout",{method:"POST",credentials:"include",headers:{"X-Pulse-CSRF":csrf}})}catch{}updateAccount(null);location.reload()});
   guildSelect.addEventListener("change",async()=>{currentData=null;summary.textContent="";updateAccessUI();await loadData();await loadPermissions();});init();
