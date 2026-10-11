@@ -36,6 +36,10 @@
 </nav></aside><main class="dash-wrap pulse-main">
     <div class="dash-head"><div><div class="eyebrow">PULSE SYSTEMS / MANAGEMENT</div><h1>Server <span>management.</span></h1><p class="dash-muted">Manage Roblox mappings and view your bot's current data.</p></div><div class="pulse-account" id="pulseAccount"><span class="pulse-avatar pulse-avatar-guest" id="pulseAvatar" aria-hidden="true">?</span><span class="pulse-account-name" id="pulseAccountName">Not signed in</span><button class="button secondary dash-button" id="loginBtn">Sign in with Discord</button><button class="button secondary dash-button" id="logoutBtn" hidden>Log Out</button></div></div>
     <div class="dash-panel"><a href="servers.html" class="backservers">← Back to your servers</a><br><select style="display:none" class="dash-select" id="guildSelect" disabled><option>Sign in to load servers</option></select><div class="dash-status" id="status" role="status">Set your API address in dashboard-config.js before signing in.</div></div>
+    <section class="dash-panel" id="pulseEarlyAccessPanel" aria-label="V1.3 Early Access">
+      <h2>V1.3 · Free Early Access</h2><p class="dash-muted">All features are currently free. Live ticket and XP totals for your selected server.</p>
+      <div id="pulseEarlyAccessStats" class="dash-status">Sign in to view server statistics.</div>
+    </section>
     <div class="dash-grid">
       <section class="dash-panel"><h2>Moderation logs</h2><p class="dash-muted">Latest cases recorded by the bot.</p><div class="dash-scroll" id="logs"><p class="dash-empty">No data loaded.</p></div></section>
       <section class="dash-panel"><h2>Discord roles</h2><p class="dash-muted">Roles and their server positions.</p><div class="dash-scroll" id="roles"><p class="dash-empty">No data loaded.</p></div></section>
@@ -45,4 +49,5 @@
     <p class="dash-muted" style="margin-top:22px">Roblox mappings can be edited here. Other dashboard sections remain read-only.</p>
   </main></div>
   <script src="dashboard-config.js?v=20261010-3"></script><script src="dashboard.js?v=20261011-multiserver-fix-1"></script>
+<script src="early-access.js?v=1.3"></script>
 </body></html>
